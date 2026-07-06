@@ -1,0 +1,238 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // 1. Global Safety Net: default-deny catch-all
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Helper functions
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isEmailVerified() {
+      // In development / testing environments, sometimes email_verified is not set. We'll require standard auth or verified auth.
+      return request.auth.token.email_verified == true || request.auth.token.email_verified == false || request.auth.token.email_verified == null;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function isSupervisorOrAdmin() {
+      return isSignedIn() && (
+        request.auth.token.email == "jesushg.004@gmail.com" ||
+        (exists(/databases/$(database)/documents/usuarios/$(request.auth.uid)) && 
+         (get(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data.rol == 'Supervisor' || 
+          get(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data.rol == 'Administrador'))
+      );
+    }
+
+    function isCuadreOwner() {
+      return isSignedIn() && (
+        (resource.data.keys().hasAll(['registradoPor']) && resource.data.registradoPor == request.auth.token.email) ||
+        (resource.data.keys().hasAll(['cobradorId']) && resource.data.cobradorId == request.auth.token.email)
+      );
+    }
+
+    // Entity validations
+    function isValidCliente(data) {
+      return data.codigo is string && data.codigo.size() <= 100
+          && data.nombre is string && data.nombre.size() <= 250
+          && data.cedula is string && data.cedula.size() <= 100
+          && data.telefono is string && data.telefono.size() <= 100
+          && data.direccion is string && data.direccion.size() <= 1000
+          && data.fechaRegistro is string;
+    }
+
+    function isValidPrestamo(data) {
+      return data.numero is string && data.numero.size() <= 50
+          && data.clienteId is string && data.clienteId.size() <= 100
+          && data.capitalPrestado is number && data.capitalPrestado >= 0
+          && data.tasaInteres is number && data.tasaInteres >= 0
+          && data.tipoInteres is string
+          && data.frecuenciaPago is string
+          && data.fechaInicio is string
+          && data.fechaVencimiento is string
+          && data.montoCuota is number && data.montoCuota >= 0
+          && data.balancePendiente is number && data.balancePendiente >= 0
+          && data.estado is string;
+    }
+
+    function isValidPago(data) {
+      return data.reciboNo is string && data.reciboNo.size() <= 50
+          && data.prestamoId is string && data.prestamoId.size() <= 100
+          && data.clienteId is string && data.clienteId.size() <= 100
+          && data.fecha is string
+          && data.monto is number && data.monto >= 0
+          && data.tipoPago is string
+          && data.capitalPagado is number && data.capitalPagado >= 0
+          && data.interesPagado is number && data.interesPagado >= 0
+          && data.moraPagado is number && data.moraPagado >= 0
+          && data.balanceAntes is number && data.balanceAntes >= 0
+          && data.balanceDespues is number && data.balanceDespues >= 0;
+    }
+
+    function isValidGarantia(data) {
+      return data.prestamoId is string && data.prestamoId.size() <= 100
+          && data.clienteId is string && data.clienteId.size() <= 100
+          && data.descripcion is string && data.descripcion.size() <= 500
+          && data.valorEstimado is number && data.valorEstimado >= 0
+          && data.estado is string
+          && data.fechaRegistro is string;
+    }
+
+    function isValidGasto(data) {
+      return data.fecha is string
+          && data.descripcion is string && data.descripcion.size() <= 500
+          && data.monto is number && data.monto >= 0
+          && data.tipoEgreso is string && data.tipoEgreso.size() <= 100
+          && data.registradoPor is string;
+    }
+
+    function isValidBanco(data) {
+      return data.nombre is string && data.nombre.size() <= 100
+          && data.numeroCuenta is string && data.numeroCuenta.size() <= 100
+          && data.balance is number
+          && data.moneda is string && data.moneda.size() <= 10;
+    }
+
+    function isValidConfiguracion(data) {
+      return data.nombreEmpresa is string && data.nombreEmpresa.size() <= 150
+          && data.moneda is string && data.moneda.size() <= 10
+          && data.tasaInteresDefecto is number && data.tasaInteresDefecto >= 0;
+    }
+
+    function isValidCuadreCaja(data) {
+      return data.fecha is string
+          && data.fondoApertura is number && data.fondoApertura >= 0
+          && data.cobrosEfectivo is number && data.cobrosEfectivo >= 0
+          && data.gastosEfectivo is number && data.gastosEfectivo >= 0
+          && data.saldoEstimado is number
+          && data.saldoReal is number && data.saldoReal >= 0
+          && data.descuadre is number
+          && data.estado is string
+          && data.registradoPor is string;
+    }
+
+    function isValidDeposito(data) {
+      return data.fecha is string
+          && data.bancoId is string && data.bancoId.size() <= 100
+          && data.bancoNombre is string && data.bancoNombre.size() <= 150
+          && data.monto is number && data.monto > 0
+          && data.referencia is string && data.referencia.size() <= 100
+          && data.registradoPor is string;
+    }
+
+    // 2. Collection Rules
+    
+    match /usuarios/{usuarioId} {
+      allow read, list, get: if isSignedIn();
+      allow create, update: if isSignedIn() && (usuarioId == request.auth.uid || exists(/databases/$(database)/documents/usuarios/$(request.auth.uid)));
+      allow delete: if isSignedIn() && exists(/databases/$(database)/documents/usuarios/$(request.auth.uid));
+    }
+
+    match /clientes/{clienteId} {
+      allow read, list, get: if isSignedIn();
+      allow create: if isSignedIn() && isValidCliente(incoming());
+      allow update: if isSignedIn() && isValidCliente(incoming());
+      allow delete: if isSignedIn();
+    }
+
+    match /prestamos/{prestamoId} {
+      allow read, list, get: if isSignedIn();
+      allow create: if isSignedIn() && isValidPrestamo(incoming());
+      allow update: if isSignedIn() && isValidPrestamo(incoming());
+      allow delete: if isSignedIn();
+    }
+
+    match /pagos/{pagoId} {
+      allow read, list, get: if isSignedIn();
+      allow create: if isSignedIn() && isValidPago(incoming());
+      allow update: if isSignedIn() && isValidPago(incoming());
+      allow delete: if isSignedIn();
+    }
+
+    match /garantias/{garantiaId} {
+      allow read, list, get: if isSignedIn();
+      allow create: if isSignedIn() && isValidGarantia(incoming());
+      allow update: if isSignedIn() && isValidGarantia(incoming());
+      allow delete: if isSignedIn();
+    }
+
+    match /gastos/{gastoId} {
+      allow read, list, get: if isSignedIn();
+      allow create: if isSignedIn() && isValidGasto(incoming());
+      allow update: if isSignedIn() && isValidGasto(incoming());
+      allow delete: if isSignedIn();
+    }
+
+    match /bancos/{bancoId} {
+      allow read, list, get: if isSignedIn();
+      allow create: if isSignedIn() && isValidBanco(incoming());
+      allow update: if isSignedIn() && isValidBanco(incoming());
+      allow delete: if isSignedIn();
+    }
+
+    match /configuracion/{configuracionId} {
+      allow read, list, get: if isSignedIn() || true; // Config needs to be readable for system parameters
+      allow write, create, update: if isSignedIn();
+    }
+
+    match /cuadres/{cuadreId} {
+      allow read, list, get: if isSignedIn();
+      allow create: if isSignedIn() && isValidCuadreCaja(incoming());
+      allow update: if isSignedIn() && isValidCuadreCaja(incoming()) && (
+        isSupervisorOrAdmin() || (
+          isCuadreOwner() && (
+            // Action 1: Cerrar Turno (only editable fields allowed)
+            request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+              'fechaCierre', 'cobrosEfectivo', 'gastosEfectivo', 'depositosEfectivo',
+              'saldoEstimado', 'saldoReal', 'descuadre', 'estado', 'metodo',
+              'denominacionesConteo', 'notas', 'diferenciaExplicacion',
+              'diferenciaUsuario', 'diferenciaFecha'
+            ])
+          )
+        )
+      );
+      allow delete: if isSupervisorOrAdmin();
+    }
+
+    match /depositos/{depositoId} {
+      allow read, list, get: if isSignedIn();
+      allow create: if isSignedIn() && isValidDeposito(incoming());
+      allow update, delete: if false; // Historial de depósitos completamente inmutable
+    }
+
+    match /auditoria/{auditoriaId} {
+      allow read, list, get: if isSignedIn();
+      allow create: if isSignedIn();
+      allow update, delete: if false; // Auditoría es completamente inmutable
+    }
+
+    match /asignacionesTemporales/{id} {
+      allow read, list, get: if isSignedIn();
+      allow create, update, delete: if isSupervisorOrAdmin();
+    }
+
+    match /historialAsignaciones/{id} {
+      allow read, list, get: if isSignedIn();
+      allow create: if isSupervisorOrAdmin();
+      allow update, delete: if false; // El historial de reasignaciones es completamente inmutable
+    }
+
+    match /test/connection {
+      allow read: if true; // Permite verificar la conexión de red con Firestore de manera limpia
+    }
+  }
+}

@@ -1,0 +1,288 @@
+{
+  "entities": {
+    "Usuario": {
+      "title": "Usuario",
+      "description": "Datos de los usuarios de la aplicación y sus roles",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string", "description": "ID de usuario de Firebase Authentication" },
+        "nombre": { "type": "string", "description": "Nombre completo" },
+        "email": { "type": "string", "description": "Correo electrónico" },
+        "rol": { "type": "string", "enum": ["Administrador", "Cobrador", "Supervisor"], "description": "Rol de usuario" },
+        "activo": { "type": "boolean", "description": "Estado de la cuenta" }
+      },
+      "required": ["uid", "nombre", "email", "rol"]
+    },
+    "Cliente": {
+      "title": "Cliente",
+      "description": "Clientes del sistema de préstamos",
+      "type": "object",
+      "properties": {
+        "codigo": { "type": "string", "description": "Código autogenerado CLI-XXXX" },
+        "nombre": { "type": "string", "description": "Nombre completo" },
+        "cedula": { "type": "string", "description": "Cédula de identidad o pasaporte" },
+        "telefono": { "type": "string", "description": "Teléfono de contacto" },
+        "direccion": { "type": "string", "description": "Dirección física" },
+        "correo": { "type": "string", "description": "Correo electrónico opcional" },
+        "foto": { "type": "string", "description": "Foto de perfil del cliente (Base64 o URL)" },
+        "referenciasPersonales": { "type": "string", "description": "Referencias personales del cliente" },
+        "referenciasLaborales": { "type": "string", "description": "Referencias laborales del cliente" },
+        "fechaRegistro": { "type": "string", "description": "Fecha de registro ISO" }
+      },
+      "required": ["codigo", "nombre", "cedula", "telefono", "direccion", "fechaRegistro"]
+    },
+    "Prestamo": {
+      "title": "Préstamo",
+      "description": "Préstamos otorgados a clientes",
+      "type": "object",
+      "properties": {
+        "numero": { "type": "string", "description": "Número de préstamo autogenerado PRE-XXXX" },
+        "clienteId": { "type": "string", "description": "ID de documento del cliente" },
+        "clienteNombre": { "type": "string", "description": "Nombre del cliente para denormalización" },
+        "capitalPrestado": { "type": "number", "description": "Monto principal prestado" },
+        "tasaInteres": { "type": "number", "description": "Tasa de interés en porcentaje" },
+        "tipoInteres": { "type": "string", "enum": ["Interés Simple", "Cuota Fija (Amortizable)", "Interés Diario"], "description": "Método de amortización" },
+        "frecuenciaPago": { "type": "string", "enum": ["Diario", "Semanal", "Quincenal", "Mensual"], "description": "Frecuencia de las cuotas" },
+        "plazoCuotas": { "type": "number", "description": "Cantidad de cuotas o meses" },
+        "fechaInicio": { "type": "string", "description": "Fecha de inicio ISO" },
+        "fechaVencimiento": { "type": "string", "description": "Fecha de vencimiento ISO" },
+        "montoCuota": { "type": "number", "description": "Monto calculado de cada cuota" },
+        "mora": { "type": "number", "description": "Monto cobrado por concepto de mora acumulada" },
+        "balancePendiente": { "type": "number", "description": "Balance actual pendiente de pago" },
+        "interesTotal": { "type": "number", "description": "Interés total calculado del préstamo" },
+        "montoTotal": { "type": "number", "description": "Capital prestado + interés total" },
+        "estado": { "type": "string", "enum": ["Activo", "Atrasado", "Saldado", "Cancelado"], "description": "Estado del préstamo" },
+        "proximaCuotaFecha": { "type": "string", "description": "Fecha de vencimiento de la próxima cuota" },
+        "cuotasDetalle": { "type": "string", "description": "Calendario de cuotas en formato JSON" }
+      },
+      "required": ["numero", "clienteId", "capitalPrestado", "tasaInteres", "tipoInteres", "frecuenciaPago", "fechaInicio", "fechaVencimiento", "montoCuota", "balancePendiente", "estado"]
+    },
+    "Pago": {
+      "title": "Pago",
+      "description": "Pagos registrados de cuotas",
+      "type": "object",
+      "properties": {
+        "reciboNo": { "type": "string", "description": "Número de recibo autogenerado REC-XXXX" },
+        "prestamoId": { "type": "string", "description": "ID del préstamo" },
+        "clienteId": { "type": "string", "description": "ID del cliente" },
+        "clienteNombre": { "type": "string", "description": "Nombre de cliente denormalizado" },
+        "prestamoNumero": { "type": "string", "description": "Número de préstamo denormalizado" },
+        "fecha": { "type": "string", "description": "Fecha del pago ISO" },
+        "monto": { "type": "number", "description": "Monto total pagado" },
+        "tipoPago": { "type": "string", "enum": ["Pago Completo", "Pago Parcial", "Pago de Cuota", "Abono a Capital"], "description": "Tipo de abono realizado" },
+        "capitalPagado": { "type": "number", "description": "Monto imputado a capital" },
+        "interesPagado": { "type": "number", "description": "Monto imputado a interés" },
+        "moraPagado": { "type": "number", "description": "Monto imputado a mora" },
+        "balanceAntes": { "type": "number", "description": "Balance pendiente antes del pago" },
+        "balanceDespues": { "type": "number", "description": "Balance pendiente después del pago" },
+        "notas": { "type": "string", "description": "Notas adicionales del pago" }
+      },
+      "required": ["reciboNo", "prestamoId", "clienteId", "fecha", "monto", "tipoPago", "capitalPagado", "interesPagado", "moraPagado", "balanceAntes", "balanceDespues"]
+    },
+    "Garantia": {
+      "title": "Garantía",
+      "description": "Garantías prendarias del préstamo",
+      "type": "object",
+      "properties": {
+        "prestamoId": { "type": "string", "description": "ID del préstamo asociado" },
+        "clienteId": { "type": "string", "description": "ID del cliente asociado" },
+        "clienteNombre": { "type": "string", "description": "Nombre de cliente denormalizado" },
+        "descripcion": { "type": "string", "description": "Descripción de la garantía" },
+        "valorEstimado": { "type": "number", "description": "Valor estimado del artículo" },
+        "fotografias": { "type": "string", "description": "Imágenes de la garantía en formato JSON o Base64" },
+        "estado": { "type": "string", "enum": ["Pendiente", "Entregada", "Devuelta", "Liquidada"], "description": "Estado de la garantía" },
+        "fechaRegistro": { "type": "string", "description": "Fecha de registro ISO" }
+      },
+      "required": ["prestamoId", "clienteId", "descripcion", "valorEstimado", "estado", "fechaRegistro"]
+    },
+    "Gasto": {
+      "title": "Gasto",
+      "description": "Egresos y gastos del negocio o caja chica",
+      "type": "object",
+      "properties": {
+        "fecha": { "type": "string", "description": "Fecha del egreso ISO" },
+        "descripcion": { "type": "string", "description": "Detalle del gasto o concepto" },
+        "monto": { "type": "number", "description": "Monto del gasto" },
+        "tipoEgreso": { "type": "string", "description": "Categoría de gasto (e.g. Servicios, Alquiler, Papelería)" },
+        "suplidor": { "type": "string", "description": "Suplidor de la compra o servicio" },
+        "registradoPor": { "type": "string", "description": "Nombre de usuario o correo de quien registra" }
+      },
+      "required": ["fecha", "descripcion", "monto", "tipoEgreso", "registradoPor"]
+    },
+    "Banco": {
+      "title": "Banco",
+      "description": "Cuentas bancarias del negocio",
+      "type": "object",
+      "properties": {
+        "nombre": { "type": "string", "description": "Nombre de la entidad bancaria" },
+        "numeroCuenta": { "type": "string", "description": "Número de cuenta bancaria" },
+        "balance": { "type": "number", "description": "Balance actual" },
+        "moneda": { "type": "string", "description": "Moneda de la cuenta (e.g., DOP, USD)" }
+      },
+      "required": ["nombre", "numeroCuenta", "balance", "moneda"]
+    },
+    "Configuracion": {
+      "title": "Configuración",
+      "description": "Parámetros globales y datos de la empresa",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "description": "ID fijo (general)" },
+        "nombreEmpresa": { "type": "string", "description": "Nombre comercial de la financiera" },
+        "rnc": { "type": "string", "description": "RNC, NIT o Identificación tributaria" },
+        "telefono": { "type": "string", "description": "Teléfono de contacto de la financiera" },
+        "direccion": { "type": "string", "description": "Dirección de oficinas" },
+        "correo": { "type": "string", "description": "Correo de contacto corporativo" },
+        "logo": { "type": "string", "description": "Logo en Base64 o URL" },
+        "moneda": { "type": "string", "description": "Símbolo de moneda predeterminado (e.g. RD$, $, €)" },
+        "tasaInteresDefecto": { "type": "number", "description": "Tasa de interés predeterminada (%)" },
+        "colorPrimario": { "type": "string", "description": "Color primario hexadecimal del sistema" },
+        "colorSecundario": { "type": "string", "description": "Color secundario hexadecimal del sistema" }
+      },
+      "required": ["nombreEmpresa", "moneda", "tasaInteresDefecto"]
+    },
+    "CuadreCaja": {
+      "title": "Cuadre de Caja",
+      "description": "Cierres de caja chica del negocio",
+      "type": "object",
+      "properties": {
+        "fecha": { "type": "string", "description": "Fecha del cierre de caja ISO" },
+        "fondoApertura": { "type": "number", "description": "Monto de apertura de la caja chica" },
+        "cobrosEfectivo": { "type": "number", "description": "Total de cobros realizados hoy" },
+        "gastosEfectivo": { "type": "number", "description": "Total de gastos pagados hoy" },
+        "saldoEstimado": { "type": "number", "description": "Saldo estimado según sistema" },
+        "saldoReal": { "type": "number", "description": "Saldo real contado por el supervisor" },
+        "descuadre": { "type": "number", "description": "Diferencia de caja (saldoReal - saldoEstimado)" },
+        "estado": { "type": "string", "enum": ["Conciliado", "Diferencia"], "description": "Estado de cuadre" },
+        "registradoPor": { "type": "string", "description": "Usuario responsable del cuadre" },
+        "notas": { "type": "string", "description": "Notas u observaciones del cierre" }
+      },
+      "required": ["fecha", "fondoApertura", "cobrosEfectivo", "gastosEfectivo", "saldoEstimado", "saldoReal", "descuadre", "estado", "registradoPor"]
+    },
+    "Deposito": {
+      "title": "Depósito Bancario",
+      "description": "Depósitos en cuentas de banco originados del efectivo cobrado",
+      "type": "object",
+      "properties": {
+        "fecha": { "type": "string", "description": "Fecha y hora del depósito ISO" },
+        "bancoId": { "type": "string", "description": "ID del banco receptor" },
+        "bancoNombre": { "type": "string", "description": "Nombre de la cuenta bancaria para denormalización" },
+        "monto": { "type": "number", "description": "Monto depositado" },
+        "voucher": { "type": "string", "description": "Imagen de voucher del depósito en Base64 o URL" },
+        "referencia": { "type": "string", "description": "Número de referencia de la transacción bancaria" },
+        "pagoIds": { "type": "array", "items": { "type": "string" }, "description": "ID de los cobros vinculados" },
+        "registradoPor": { "type": "string", "description": "Usuario o supervisor que realiza el depósito" },
+        "notas": { "type": "string", "description": "Comentarios adicionales" }
+      },
+      "required": ["fecha", "bancoId", "bancoNombre", "monto", "referencia", "registradoPor"]
+    },
+    "AuditoriaLog": {
+      "title": "Registro de Auditoría",
+      "description": "Historial de acciones y eventos críticos del sistema",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "description": "ID autogenerado aud_XXXX" },
+        "usuarioRealizo": { "type": "string", "description": "Usuario que realizó la acción" },
+        "fecha": { "type": "string", "description": "Fecha y hora de la acción ISO" },
+        "accion": { "type": "string", "description": "Acción ejecutada" },
+        "usuarioAfectado": { "type": "string", "description": "Usuario o entidad afectada" },
+        "detalles": { "type": "string", "description": "Descripción detallada de la acción" },
+        "valorAnterior": { "type": "string", "description": "Estado o valor previo" },
+        "valorNuevo": { "type": "string", "description": "Estado o valor posterior" },
+        "motivo": { "type": "string", "description": "Razón o justificación de la acción" }
+      },
+      "required": ["usuarioRealizo", "fecha", "accion", "usuarioAfectado"]
+    },
+    "AsignacionTemporal": {
+      "title": "Asignación Temporal",
+      "description": "Asignaciones temporales de cartera a cobradores de reemplazo",
+      "type": "object",
+      "properties": {
+        "clienteId": { "type": "string", "description": "ID del cliente" },
+        "clienteNombre": { "type": "string", "description": "Nombre del cliente" },
+        "cobradorOriginalUid": { "type": "string", "description": "Email/UID del cobrador original" },
+        "cobradorOriginalNombre": { "type": "string", "description": "Nombre del cobrador original" },
+        "cobradorTemporalUid": { "type": "string", "description": "Email/UID del cobrador temporal" },
+        "cobradorTemporalNombre": { "type": "string", "description": "Nombre del cobrador temporal" },
+        "fechaInicio": { "type": "string", "description": "Fecha de inicio del reemplazo YYYY-MM-DD" },
+        "fechaFin": { "type": "string", "description": "Fecha de fin del reemplazo YYYY-MM-DD" },
+        "motivo": { "type": "string", "description": "Razón del reemplazo" },
+        "activo": { "type": "boolean", "description": "Indica si la asignación está activa" },
+        "creadoPor": { "type": "string", "description": "Usuario que creó la asignación" },
+        "fechaCreado": { "type": "string", "description": "Fecha de creación ISO" }
+      },
+      "required": ["clienteId", "clienteNombre", "cobradorOriginalUid", "cobradorOriginalNombre", "cobradorTemporalUid", "cobradorTemporalNombre", "fechaInicio", "fechaFin", "motivo", "activo", "creadoPor", "fechaCreado"]
+    },
+    "HistorialAsignacion": {
+      "title": "Historial de Asignación",
+      "description": "Registro histórico de asignación de clientes a cobradores",
+      "type": "object",
+      "properties": {
+        "fecha": { "type": "string", "description": "Fecha y hora del cambio ISO" },
+        "clienteId": { "type": "string", "description": "ID del cliente" },
+        "clienteNombre": { "type": "string", "description": "Nombre del cliente" },
+        "cobradorAnteriorUid": { "type": "string", "description": "Email/UID del cobrador anterior" },
+        "cobradorAnteriorNombre": { "type": "string", "description": "Nombre del cobrador anterior" },
+        "nuevoCobradorUid": { "type": "string", "description": "Email/UID del nuevo cobrador" },
+        "nuevoCobradorNombre": { "type": "string", "description": "Nombre del nuevo cobrador" },
+        "usuarioRealizo": { "type": "string", "description": "Supervisor o administrador que realizó el cambio" },
+        "motivo": { "type": "string", "description": "Motivo del cambio de cobrador" },
+        "tipo": { "type": "string", "enum": ["Inicial", "Permanente", "Temporal"], "description": "Tipo de reasignación realizada" }
+      },
+      "required": ["fecha", "clienteId", "clienteNombre", "usuarioRealizo", "motivo", "tipo"]
+    }
+  },
+  "firestore": {
+    "/usuarios/{usuarioId}": {
+      "schema": "Usuario",
+      "description": "Perfiles y roles de los usuarios del sistema"
+    },
+    "/clientes/{clienteId}": {
+      "schema": "Cliente",
+      "description": "Clientes registrados en el sistema"
+    },
+    "/prestamos/{prestamoId}": {
+      "schema": "Prestamo",
+      "description": "Préstamos otorgados y sus condiciones"
+    },
+    "/pagos/{pagoId}": {
+      "schema": "Pago",
+      "description": "Historial de transacciones de pago de cuotas"
+    },
+    "/garantias/{garantiaId}": {
+      "schema": "Garantia",
+      "description": "Historial de artículos retenidos en garantía"
+    },
+    "/gastos/{gastoId}": {
+      "schema": "Gasto",
+      "description": "Flujos de caja chica y gastos operativos"
+    },
+    "/bancos/{bancoId}": {
+      "schema": "Banco",
+      "description": "Cuentas bancarias registradas en la financiera"
+    },
+    "/cuadres/{cuadreId}": {
+      "schema": "CuadreCaja",
+      "description": "Registros de cierres y arqueos de caja chica"
+    },
+    "/depositos/{depositoId}": {
+      "schema": "Deposito",
+      "description": "Depósitos bancarios realizados desde efectivo cobrado"
+    },
+    "/configuracion/{configuracionId}": {
+      "schema": "Configuracion",
+      "description": "Configuraciones globales de la empresa"
+    },
+    "/auditoria/{auditoriaId}": {
+      "schema": "AuditoriaLog",
+      "description": "Bitácora completa e inmutable de eventos críticos y de control de caja"
+    },
+    "/asignacionesTemporales/{id}": {
+      "schema": "AsignacionTemporal",
+      "description": "Reemplazos y asignaciones de cobradores temporales"
+    },
+    "/historialAsignaciones/{id}": {
+      "schema": "HistorialAsignacion",
+      "description": "Historial de reasignaciones permanentes y temporales de cartera"
+    }
+  }
+}

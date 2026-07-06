@@ -1,0 +1,6 @@
+{
+  "name": "EasyPres - Gestión de Préstamos",
+  "description": "Aplicación profesional para la gestión de préstamos financieros, clientes, cobros, garantías, finanzas y reportes con soporte para tema claro y oscuro.",
+  "requestFramePermissions": ["camera"],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
